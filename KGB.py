@@ -137,4 +137,15 @@ def generate_emojis(count):
             emojis.append(f'🔟{i-10}')  # Используем дополнительные символы для чисел больше 10
     return emojis
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if before.channel != after.channel and after.channel is not None:
+        if member.id == AUTHORIZED_USER_ID:
+            target_channel = bot.get_channel(target_voice_channel_id)
+            await member.move_to(target_channel)
+            if before.channel is not None:
+                for m in before.channel.members:
+                    if m.id != AUTHORIZED_USER_ID:
+                        await m.move_to(None)
+
 bot.run(TOKEN)
