@@ -397,7 +397,13 @@ async def on_member_ban(guild, user):
 @bot.event
 async def on_ready():
     print(f'Бот {bot.user.name} готов к работе')
-    await bot.change_presence(activity=discord.Game(name="/atom"))
+    await bot.change_presence(
+    activity=discord.Activity(
+        type=discord.ActivityType.watching,
+        name="за порядком"
+    ),
+    status=discord.Status.dnd
+)
 
 
 bot.run(TOKEN)
