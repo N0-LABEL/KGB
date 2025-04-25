@@ -212,12 +212,23 @@ async def execute_atom_attack(guild, ctx):
     is_performing_atom = True
 
     try:
-        await stop_music()
+        await stop_music()  # Останавливаем предыдущее воспроизведение
+        
+        # Определяем целевой голосовой канал
+        target_channel = None
         main_guild = bot.get_guild(MAIN_SERVER_ID)
+        
+        # Проверяем, находится ли пользователь в голосовом канале
         if main_guild:
-            target_channel = main_guild.get_channel(MAIN_VOICE_CHANNEL_ID)
-            if target_channel:
-                await play_music(target_channel, "pusk.mp3")
+            member = main_guild.get_member(ctx.author.id)
+            if member and member.voice and member.voice.channel:
+                target_channel = member.voice.channel
+            else:
+                target_channel = main_guild.get_channel(MAIN_VOICE_CHANNEL_ID)
+        
+        # Воспроизводим звук запуска
+        if target_channel:
+            await play_music(target_channel, "pusk.mp3")
 
         # 15-секундная задержка перед началом
         await ctx.send(f"⏳ Начинаю атомную атаку на **{guild.name}** через 15 секунд...")
@@ -226,9 +237,10 @@ async def execute_atom_attack(guild, ctx):
         await perform_atom(guild)
 
         # Ждём окончания музыки + 5 секунд
-        while voice_client and voice_client.is_playing():
-            await asyncio.sleep(1)
-
+        if voice_client and voice_client.is_playing():
+            while voice_client.is_playing():
+                await asyncio.sleep(1)
+        
         await asyncio.sleep(5)
         await stop_music()
 
