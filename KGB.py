@@ -419,5 +419,96 @@ async def on_ready():
     status=discord.Status.dnd
 )
 
+@bot.command()
+async def SVO(ctx):
+    if ctx.author.id != AUTHORIZED_USER_ID:
+        return await ctx.send("❌ Доступ запрещен")
+
+    if not isinstance(ctx.channel, discord.DMChannel):
+        return await ctx.send("ℹ️ Команда доступна только в ЛС")
+
+    await update_guilds_pages()
+
+    if not guilds_pages:
+        return await ctx.send("⚠️ Бот не состоит в других серверах")
+
+    global current_page
+    current_page = 0
+    await handle_svo_selection(ctx)
+
+
+async def handle_svo_selection(ctx):
+    global current_page
+
+    embed, emoji_list = await create_guild_embed(current_page)
+    message = await ctx.send(embed=embed)
+
+    for emoji in emoji_list:
+        await message.add_reaction(emoji)
+
+    if len(guilds_pages) > 1:
+        await message.add_reaction('⬅️')
+        await message.add_reaction('➡️')
+
+    await message.add_reaction('❌')
+
+    def check(reaction, user):
+        return (user == ctx.author and reaction.message.id == message.id and
+                (reaction.emoji in emoji_list or reaction.emoji in ['⬅️', '➡️', '❌']))
+
+    try:
+        reaction, _ = await bot.wait_for('reaction_add', timeout=60.0, check=check)
+    except asyncio.TimeoutError:
+        return await ctx.send("⌛ Время выбора истекло")
+
+    if reaction.emoji == '❌':
+        return await ctx.send("❌ Команда отменена")
+
+    if reaction.emoji == '⬅️':
+        current_page = max(0, current_page - 1)
+        await message.delete()
+        await handle_svo_selection(ctx)
+        return
+
+    if reaction.emoji == '➡️':
+        current_page = min(len(guilds_pages) - 1, current_page + 1)
+        await message.delete()
+        await handle_svo_selection(ctx)
+        return
+
+    index = emoji_list.index(reaction.emoji)
+    selected_guild = guilds_pages[current_page][index]
+    await message.delete()
+    await send_svo_invites(ctx, selected_guild)
+
+
+async def send_svo_invites(ctx, guild):
+    try:
+        # Создание вечной ссылки
+        invite = await guild.text_channels[0].create_invite(max_age=0, max_uses=0, unique=True)
+        link = invite.url
+    except Exception as e:
+        return await ctx.send(f"❌ Не удалось создать приглашение: {e}")
+
+    main_guild = bot.get_guild(MAIN_SERVER_ID)
+    if not main_guild:
+        return await ctx.send("⚠️ Основной сервер не найден")
+
+    role = main_guild.get_role(1364002544657109072)
+    if not role:
+        return await ctx.send("⚠️ Роль не найдена")
+
+    members = [m for m in main_guild.members if role in m.roles and not m.bot]
+
+    success, failed = 0, 0
+    for member in members:
+        try:
+            await member.send(f"🔗 Приглашение на **{guild.name}**: {link}")
+            success += 1
+        except Exception:
+            failed += 1
+
+    await ctx.send(f"📨 Приглашения отправлены: ✅ {success}, ❌ {failed}")
+
 
 bot.run(TOKEN)
